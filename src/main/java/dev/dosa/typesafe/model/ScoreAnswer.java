@@ -23,8 +23,8 @@ public record ScoreAnswer(
         implements Answer {
 
     /**
-     * Canonical constructor. {@code null} maps are normalized — {@code legend}
-     * to an empty map and {@code probabilities} to {@link Optional#empty()} —
+     * Canonical constructor. {@code null} maps are normalized - {@code legend}
+     * to an empty map and {@code probabilities} to {@link Optional#empty()} -
      * and maps are stored as unmodifiable copies.
      */
     public ScoreAnswer {

@@ -8,7 +8,7 @@ import dev.dosa.typesafe.exception.InvalidRequestException;
  * Base type for the three System One question kinds: noul (yes/no), choice
  * (pick one of N options), and score (rate against an ordered rubric).
  *
- * <p>This is a sealed hierarchy — questions can only be created through the
+ * <p>This is a sealed hierarchy - questions can only be created through the
  * static factories {@link #noul(String)}, {@link #choice(String)}, and
  * {@link #score(String)}, each of which returns a fluent builder that is itself
  * the question:</p>
@@ -79,7 +79,7 @@ public abstract sealed class Question permits NoulQuestion, ChoiceQuestion, Scor
     }
 
     /**
-     * Serializes this question to its wire representation —
+     * Serializes this question to its wire representation -
      * {@code {"type": ..., "instructions": ..., "criteria": ...}}.
      *
      * @return the question as a JSON object

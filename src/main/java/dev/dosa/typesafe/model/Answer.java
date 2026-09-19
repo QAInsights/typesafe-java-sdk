@@ -4,8 +4,8 @@ package dev.dosa.typesafe.model;
  * Base type for a single System One answer.
  *
  * <p>This is a sealed hierarchy with four concrete variants mirroring the
- * question types — {@link NoulAnswer}, {@link ChoiceAnswer},
- * {@link ScoreAnswer} — plus {@link UnknownAnswer}, which captures any
+ * question types - {@link NoulAnswer}, {@link ChoiceAnswer},
+ * {@link ScoreAnswer} - plus {@link UnknownAnswer}, which captures any
  * unrecognized or future {@code "type"} value so responses remain
  * forward-compatible.</p>
  *

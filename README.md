@@ -2,14 +2,14 @@
 
 > **Unofficial community SDK.** This project is not affiliated with, endorsed
 > by, or sponsored by TypeSafe AI. "TypeSafe" and all related names, marks, and
-> logos are trademarks of TypeSafe AI — used here solely to identify the API
+> logos are trademarks of TypeSafe AI - used here solely to identify the API
 > this client targets. Use at your own risk; the API may change without notice.
 
 Java client for [TypeSafe AI](https://api.typesafe.ai)'s **System One** API
 (`POST /v1/systemone`).
 
 - Java 21+, Maven build
-- `java.net.http.HttpClient` transport — no extra HTTP dependency
+- `java.net.http.HttpClient` transport - no extra HTTP dependency
 - Jackson for JSON (only runtime dependency)
 - Sync + async (`CompletableFuture`) APIs
 - Automatic retries with exponential backoff + jitter on 429/5xx, honoring
@@ -91,10 +91,10 @@ Stream<Entry<String, ScoreAnswer>>  allScores  = resp.scores();
 Response metadata (kept separate from answer data):
 
 ```java
-resp.requestId();   // Optional<String> — x-typesafe-request-id header
+resp.requestId();   // Optional<String> - x-typesafe-request-id header
 resp.httpStatus();  // final HTTP status after retries
 resp.attempts();    // number of HTTP attempts made
-resp.usage();       // Optional<Usage> — input/output token counts
+resp.usage();       // Optional<Usage> - input/output token counts
 ```
 
 ## Errors
@@ -104,7 +104,7 @@ All exceptions extend the unchecked `dev.dosa.typesafe.exception.TypeSafeExcepti
 | Exception                  | When                                                        |
 |----------------------------|-------------------------------------------------------------|
 | `InvalidRequestException`  | Client-side validation failure (thrown before any network)  |
-| `AuthenticationException`  | HTTP 401/403 — never retried                                |
+| `AuthenticationException`  | HTTP 401/403 - never retried                                |
 | `RateLimitException`       | HTTP 429 after all retry attempts exhausted                 |
 | `ApiException`             | Other error statuses / unparseable body (status + body + request id) |
 | `NetworkException`         | Transport-level `IOException` (timeouts, DNS, refused)      |
@@ -116,8 +116,8 @@ in exception messages.
 
 ```java
 TypeSafeClient.builder()
-        .apiKey(...)                     // required
-        .baseUrl(...)                    // default https://api.typesafe.ai
+        .apiKey(...)                     // or TYPESAFE_API_KEY env var
+        .baseUrl(...)                    // or TYPESAFE_BASE_URL env var, then https://api.typesafe.ai
         .defaultModel(...)               // model used when request has none
         .requestTimeout(Duration)        // per attempt, default 30s
         .connectTimeout(Duration)        // default 10s

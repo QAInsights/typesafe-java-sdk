@@ -21,7 +21,7 @@ import java.time.Duration;
 public final class TypeSafeClientBuilder {
 
     String apiKey;
-    String baseUrl = TypeSafeClient.DEFAULT_BASE_URL;
+    String baseUrl;
     String defaultModel;
     Duration requestTimeout = Duration.ofSeconds(30);
     Duration connectTimeout = Duration.ofSeconds(10);
@@ -35,7 +35,8 @@ public final class TypeSafeClientBuilder {
 
     /**
      * Sets the API key used for the {@code Authorization: Bearer} header.
-     * Required. The key is never included in exception messages or logs.
+     * Required unless the {@code TYPESAFE_API_KEY} environment variable is set.
+     * The key is never included in exception messages or logs.
      *
      * @param apiKey the TypeSafe API key
      * @return this builder
@@ -46,8 +47,9 @@ public final class TypeSafeClientBuilder {
     }
 
     /**
-     * Overrides the API base URL — primarily for pointing the client at a test
-     * server. Defaults to {@link TypeSafeClient#DEFAULT_BASE_URL}.
+     * Overrides the API base URL - primarily for pointing the client at a test
+     * server. Falls back to the {@code TYPESAFE_BASE_URL} environment variable
+     * when unset, then to {@link TypeSafeClient#DEFAULT_BASE_URL}.
      *
      * @param baseUrl the base URL, without a trailing path (e.g.
      *        {@code "https://api.typesafe.ai"})
@@ -134,7 +136,7 @@ public final class TypeSafeClientBuilder {
     }
 
     /**
-     * Supplies a custom {@link HttpClient} for transport — e.g. with a custom
+     * Supplies a custom {@link HttpClient} for transport - e.g. with a custom
      * executor, proxy, or TLS configuration. When unset, a default client is
      * created with the configured {@link #connectTimeout(Duration)}.
      *
@@ -150,15 +152,22 @@ public final class TypeSafeClientBuilder {
      * Builds the client.
      *
      * @return a {@link TypeSafeClient}
-     * @throws IllegalArgumentException if the API key is missing or the
+     * @throws IllegalArgumentException if no API key is available or the
      *         configuration is invalid
      */
     public TypeSafeClient build() {
         if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalArgumentException("apiKey is required");
+            apiKey = System.getenv("TYPESAFE_API_KEY");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException(
+                    "apiKey is required (set it via apiKey(...) or the TYPESAFE_API_KEY environment variable)");
         }
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalArgumentException("baseUrl must not be blank");
+            baseUrl = System.getenv("TYPESAFE_BASE_URL");
+        }
+        if (baseUrl == null || baseUrl.isBlank()) {
+            baseUrl = TypeSafeClient.DEFAULT_BASE_URL;
         }
         baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         if (requestTimeout == null || requestTimeout.isNegative() || requestTimeout.isZero()) {

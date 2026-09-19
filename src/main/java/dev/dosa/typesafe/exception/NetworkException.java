@@ -1,7 +1,7 @@
 package dev.dosa.typesafe.exception;
 
 /**
- * Thrown when a request fails at the transport level — DNS errors, connection
+ * Thrown when a request fails at the transport level - DNS errors, connection
  * refusals, timeouts, and other {@link java.io.IOException}s raised by the
  * underlying HTTP client.
  */

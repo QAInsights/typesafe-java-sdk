@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * A request to the System One API ({@code POST /v1/systemone}).
  *
- * <p>Instances are immutable and created via {@link #builder()} — the builder
+ * <p>Instances are immutable and created via {@link #builder()} - the builder
  * performs all client-side validation, so a successfully built request is
  * always wire-valid:</p>
  *
@@ -46,7 +46,7 @@ public final class SystemOneRequest {
     }
 
     /**
-     * Returns the state payload sent to the model. May be any JSON value —
+     * Returns the state payload sent to the model. May be any JSON value -
      * string, object, or array.
      *
      * @return the state as a JSON tree
@@ -57,7 +57,7 @@ public final class SystemOneRequest {
 
     /**
      * Returns the requested model, or {@code null} when unset (in which case the
-     * client's default model — or ultimately the server's — is used).
+     * client's default model - or ultimately the server's - is used).
      *
      * @return the model name, or {@code null}
      */

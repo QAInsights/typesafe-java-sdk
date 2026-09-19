@@ -12,7 +12,7 @@ import java.util.List;
  *
  * <p>Created via {@link Question#score(String)}. Each {@link #level(String)}
  * call appends one rubric level; the level's index in the list is the integer
- * score it represents. Requires at least {@value #MIN_LEVELS} levels — validated
+ * score it represents. Requires at least {@value #MIN_LEVELS} levels - validated
  * when the request is built, before any network call.</p>
  */
 public final class ScoreQuestion extends Question {

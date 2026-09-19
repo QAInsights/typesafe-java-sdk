@@ -9,6 +9,7 @@ import dev.dosa.typesafe.exception.TypeSafeException;
 import dev.dosa.typesafe.model.SystemOneRequest;
 import dev.dosa.typesafe.model.SystemOneResponse;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,6 +18,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -54,7 +56,8 @@ public final class TypeSafeClient {
 
     static final String SYSTEM_ONE_PATH = "/v1/systemone";
     static final String REQUEST_ID_HEADER = "x-typesafe-request-id";
-    static final String USER_AGENT = "typesafe-java-sdk/0.1.0";
+    static final String SDK_VERSION = loadVersion();
+    static final String USER_AGENT = "typesafe-java-sdk/" + SDK_VERSION;
 
     private final HttpClient http;
     private final String apiKey;
@@ -117,7 +120,7 @@ public final class TypeSafeClient {
 
     /**
      * Sends a System One request asynchronously. Retry backoff does not block a
-     * thread — it is scheduled on a delayed executor.
+     * thread - it is scheduled on a delayed executor.
      *
      * @param request the request to send
      * @return a future completing with the parsed response, or exceptionally
@@ -229,6 +232,22 @@ public final class TypeSafeClient {
         long capped = Math.min(base, maxRetryDelay.toMillis());
         long jittered = ThreadLocalRandom.current().nextLong(capped / 2, capped + 1);
         return Duration.ofMillis(jittered);
+    }
+
+    private static String loadVersion() {
+        try (InputStream in = TypeSafeClient.class.getResourceAsStream("/typesafe-java-sdk.properties")) {
+            if (in != null) {
+                Properties props = new Properties();
+                props.load(in);
+                String version = props.getProperty("version");
+                if (version != null && !version.isBlank() && !version.contains("${")) {
+                    return version;
+                }
+            }
+        } catch (IOException ignored) {
+            // fall through to the fallback version below
+        }
+        return "unknown";
     }
 
     private static Duration parseRetryAfter(String value) {

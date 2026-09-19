@@ -14,14 +14,14 @@ import java.util.stream.Stream;
  * A parsed response from the System One API.
  *
  * <p>Answers are keyed by the question names from the request. Use the typed
- * accessors — {@link #noul(String)}, {@link #choice(String)},
- * {@link #score(String)} — to look up a specific answer, or the
+ * accessors - {@link #noul(String)}, {@link #choice(String)},
+ * {@link #score(String)} - to look up a specific answer, or the
  * {@link #nouls()}, {@link #choices()}, {@link #scores()} streams to iterate
  * all answers of one kind. Unrecognized answer types are preserved as
  * {@link UnknownAnswer} and reachable via {@link #answers()}.</p>
  *
- * <p>Transport metadata — the {@code x-typesafe-request-id} header, final HTTP
- * status, and number of attempts made — is exposed separately from the answer
+ * <p>Transport metadata - the {@code x-typesafe-request-id} header, final HTTP
+ * status, and number of attempts made - is exposed separately from the answer
  * data via {@link #requestId()}, {@link #httpStatus()}, and
  * {@link #attempts()}.</p>
  */
@@ -236,7 +236,7 @@ public final class SystemOneResponse {
     }
 
     /**
-     * Returns the number of HTTP attempts made to produce this response —
+     * Returns the number of HTTP attempts made to produce this response -
      * {@code 1} when no retry was needed.
      *
      * @return the attempt count

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * that the answer is "true".
  *
  * <p>Created via {@link Question#noul(String)}. Criteria for each outcome are
- * optional — when neither is set, the {@code criteria} field is omitted from the
+ * optional - when neither is set, the {@code criteria} field is omitted from the
  * wire payload entirely.</p>
  */
 public final class NoulQuestion extends Question {

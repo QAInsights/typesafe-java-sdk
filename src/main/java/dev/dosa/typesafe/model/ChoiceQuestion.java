@@ -11,7 +11,7 @@ import java.util.Map;
  * A choice question: the model picks exactly one of the defined options.
  *
  * <p>Created via {@link Question#choice(String)}. Requires between
- * {@value #MIN_OPTIONS} and {@value #MAX_OPTIONS} options — validated when the
+ * {@value #MIN_OPTIONS} and {@value #MAX_OPTIONS} options - validated when the
  * request is built, before any network call. Options are stored in a
  * {@link LinkedHashMap}, so the wire payload preserves the order in which
  * {@link #option(String, String)} was called.</p>

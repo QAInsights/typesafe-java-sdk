@@ -9,8 +9,8 @@ import java.util.Map;
 /**
  * Fluent builder for {@link SystemOneRequest}.
  *
- * <p>{@link #build()} validates the request client-side — before any network
- * call — and throws {@link InvalidRequestException} when the state is missing,
+ * <p>{@link #build()} validates the request client-side - before any network
+ * call - and throws {@link InvalidRequestException} when the state is missing,
  * the questions map is empty, a question name is blank, a choice question has
  * an out-of-range option count, or a score question has too few levels.</p>
  */
@@ -26,7 +26,7 @@ public final class SystemOneRequestBuilder {
     /**
      * Sets the state payload from an arbitrary JSON tree.
      *
-     * @param state any {@link JsonNode} — object, array, or scalar
+     * @param state any {@link JsonNode} - object, array, or scalar
      * @return this builder
      */
     public SystemOneRequestBuilder state(JsonNode state) {
@@ -59,7 +59,7 @@ public final class SystemOneRequestBuilder {
 
     /**
      * Sets the model to use. An empty string (or leaving this unset) lets the
-     * client default — or ultimately the server — pick the model.
+     * client default - or ultimately the server - pick the model.
      *
      * @param model the model name, e.g. {@code "jev-latest"}
      * @return this builder
