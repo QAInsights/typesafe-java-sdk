@@ -1,5 +1,10 @@
 # typesafe-java-sdk
 
+> **Unofficial community SDK.** This project is not affiliated with, endorsed
+> by, or sponsored by TypeSafe AI. "TypeSafe" and all related names, marks, and
+> logos are trademarks of TypeSafe AI — used here solely to identify the API
+> this client targets. Use at your own risk; the API may change without notice.
+
 Java client for [TypeSafe AI](https://api.typesafe.ai)'s **System One** API
 (`POST /v1/systemone`).
 
