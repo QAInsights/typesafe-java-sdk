@@ -3,9 +3,11 @@ package dev.dosa.typesafe;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.dosa.typesafe.exception.ApiException;
 import dev.dosa.typesafe.exception.AuthenticationException;
+import dev.dosa.typesafe.exception.InvalidRequestException;
 import dev.dosa.typesafe.exception.NetworkException;
 import dev.dosa.typesafe.exception.RateLimitException;
 import dev.dosa.typesafe.exception.TypeSafeException;
+import dev.dosa.typesafe.model.ModelInfo;
 import dev.dosa.typesafe.model.SystemOneRequest;
 import dev.dosa.typesafe.model.SystemOneResponse;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -55,6 +58,7 @@ public final class TypeSafeClient {
     public static final String DEFAULT_BASE_URL = "https://api.typesafe.ai";
 
     static final String SYSTEM_ONE_PATH = "/v1/systemone";
+    static final String MODELS_PATH = "/v1/models";
     static final String REQUEST_ID_HEADER = "x-typesafe-request-id";
     static final String SDK_VERSION = loadVersion();
     static final String USER_AGENT = "typesafe-java-sdk/" + SDK_VERSION;
@@ -103,19 +107,10 @@ public final class TypeSafeClient {
      */
     public SystemOneResponse systemOne(SystemOneRequest request) {
         Objects.requireNonNull(request, "request");
-        HttpRequest httpRequest = newHttpRequest(request);
-        for (int attempt = 1; ; attempt++) {
-            HttpResponse<String> resp = send(httpRequest);
-            int status = resp.statusCode();
-            String requestId = requestId(resp);
-            if (isSuccess(status)) {
-                return SystemOneResponse.parse(resp.body(), status, requestId, attempt);
-            }
-            if (!isRetryable(status) || attempt >= maxAttempts) {
-                throw errorFor(status, resp.body(), requestId, attempt);
-            }
-            sleep(retryDelay(resp, attempt));
-        }
+        AttemptedResponse result = sendWithRetries(newSystemOneRequest(request));
+        HttpResponse<String> resp = result.response();
+        return SystemOneResponse.parse(resp.body(), resp.statusCode(),
+                requestId(resp), result.attempts());
     }
 
     /**
@@ -128,11 +123,58 @@ public final class TypeSafeClient {
      */
     public CompletableFuture<SystemOneResponse> systemOneAsync(SystemOneRequest request) {
         Objects.requireNonNull(request, "request");
-        return sendWithRetry(newHttpRequest(request), 1);
+        return sendWithRetriesAsync(newSystemOneRequest(request), 1)
+                .thenApply(result -> {
+                    HttpResponse<String> resp = result.response();
+                    return SystemOneResponse.parse(resp.body(), resp.statusCode(),
+                            requestId(resp), result.attempts());
+                });
     }
 
-    private CompletableFuture<SystemOneResponse> sendWithRetry(HttpRequest httpRequest, int attempt) {
-        CompletableFuture<SystemOneResponse> result = new CompletableFuture<>();
+    /**
+     * Lists the models available on the API ({@code GET /v1/models}).
+     *
+     * @return the available models, in server order
+     * @throws AuthenticationException on HTTP 401/403 (never retried)
+     * @throws RateLimitException on HTTP 429 after all retries are exhausted
+     * @throws ApiException on other error statuses or an unparseable body
+     * @throws NetworkException on transport-level failures
+     */
+    public List<ModelInfo> models() {
+        AttemptedResponse result = sendWithRetries(newModelsRequest());
+        return ModelInfo.parseList(result.response().body());
+    }
+
+    /**
+     * Lists the models available on the API asynchronously.
+     *
+     * @return a future completing with the model list, or exceptionally with
+     *         the same exception types as {@link #models()}
+     */
+    public CompletableFuture<List<ModelInfo>> modelsAsync() {
+        return sendWithRetriesAsync(newModelsRequest(), 1)
+                .thenApply(result -> ModelInfo.parseList(result.response().body()));
+    }
+
+    private record AttemptedResponse(HttpResponse<String> response, int attempts) {
+    }
+
+    private AttemptedResponse sendWithRetries(HttpRequest httpRequest) {
+        for (int attempt = 1; ; attempt++) {
+            HttpResponse<String> resp = send(httpRequest);
+            int status = resp.statusCode();
+            if (isSuccess(status)) {
+                return new AttemptedResponse(resp, attempt);
+            }
+            if (!isRetryable(status) || attempt >= maxAttempts) {
+                throw errorFor(status, resp.body(), requestId(resp), attempt);
+            }
+            sleep(retryDelay(resp, attempt));
+        }
+    }
+
+    private CompletableFuture<AttemptedResponse> sendWithRetriesAsync(HttpRequest httpRequest, int attempt) {
+        CompletableFuture<AttemptedResponse> result = new CompletableFuture<>();
         http.sendAsync(httpRequest, HttpResponse.BodyHandlers.ofString())
                 .whenComplete((resp, err) -> {
                     if (err != null) {
@@ -140,29 +182,24 @@ public final class TypeSafeClient {
                         return;
                     }
                     int status = resp.statusCode();
-                    String requestId = requestId(resp);
                     if (isSuccess(status)) {
-                        try {
-                            result.complete(
-                                    SystemOneResponse.parse(resp.body(), status, requestId, attempt));
-                        } catch (TypeSafeException e) {
-                            result.completeExceptionally(e);
-                        }
+                        result.complete(new AttemptedResponse(resp, attempt));
                         return;
                     }
                     if (isRetryable(status) && attempt < maxAttempts) {
                         scheduleRetry(httpRequest, attempt + 1, retryDelay(resp, attempt), result);
                     } else {
-                        result.completeExceptionally(errorFor(status, resp.body(), requestId, attempt));
+                        result.completeExceptionally(
+                                errorFor(status, resp.body(), requestId(resp), attempt));
                     }
                 });
         return result;
     }
 
     private void scheduleRetry(HttpRequest httpRequest, int attempt, Duration delay,
-            CompletableFuture<SystemOneResponse> result) {
+            CompletableFuture<AttemptedResponse> result) {
         CompletableFuture.delayedExecutor(delay.toMillis(), TimeUnit.MILLISECONDS)
-                .execute(() -> sendWithRetry(httpRequest, attempt)
+                .execute(() -> sendWithRetriesAsync(httpRequest, attempt)
                         .whenComplete((r, e) -> {
                             if (e != null) {
                                 result.completeExceptionally(e);
@@ -183,20 +220,45 @@ public final class TypeSafeClient {
         }
     }
 
-    private HttpRequest newHttpRequest(SystemOneRequest request) {
+    private HttpRequest newSystemOneRequest(SystemOneRequest request) {
         ObjectNode body = request.toJson();
-        if (request.model() == null && defaultModel != null) {
-            body.put("model", defaultModel);
-        }
-        return HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + SYSTEM_ONE_PATH))
-                .timeout(requestTimeout)
-                .header("Authorization", "Bearer " + apiKey)
+        body.put("model", resolveModel(request));
+        return baseRequest(SYSTEM_ONE_PATH)
                 .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .header("User-Agent", USER_AGENT)
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .build();
+    }
+
+    private HttpRequest newModelsRequest() {
+        return baseRequest(MODELS_PATH).GET().build();
+    }
+
+    private HttpRequest.Builder baseRequest(String path) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .timeout(requestTimeout)
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Accept", "application/json")
+                .header("User-Agent", USER_AGENT);
+    }
+
+    /**
+     * Resolves the effective model: the request's model wins, then the client's
+     * default model. The API requires a non-empty model - there is no
+     * server-side default - so a missing model fails client-side.
+     */
+    private String resolveModel(SystemOneRequest request) {
+        String model = request.model();
+        if (model == null || model.isBlank()) {
+            model = defaultModel;
+        }
+        if (model == null || model.isBlank()) {
+            throw new InvalidRequestException(
+                    "A model is required: set one via SystemOneRequest.builder().model(...)"
+                            + " or TypeSafeClient.builder().defaultModel(...)"
+                            + " (see client.models() for available models)");
+        }
+        return model;
     }
 
     private static boolean isSuccess(int status) {

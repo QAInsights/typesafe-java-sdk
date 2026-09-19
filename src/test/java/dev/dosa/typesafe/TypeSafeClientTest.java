@@ -3,22 +3,26 @@ package dev.dosa.typesafe;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import dev.dosa.typesafe.exception.ApiException;
 import dev.dosa.typesafe.exception.AuthenticationException;
 import dev.dosa.typesafe.exception.InvalidRequestException;
 import dev.dosa.typesafe.exception.RateLimitException;
 import dev.dosa.typesafe.model.ChoiceAnswer;
+import dev.dosa.typesafe.model.ModelInfo;
 import dev.dosa.typesafe.model.Question;
 import dev.dosa.typesafe.model.ScoreAnswer;
 import dev.dosa.typesafe.model.SystemOneRequest;
 import dev.dosa.typesafe.model.SystemOneResponse;
 import dev.dosa.typesafe.model.UnknownAnswer;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -39,6 +43,7 @@ class TypeSafeClientTest {
         client = TypeSafeClient.builder()
                 .apiKey(TEST_KEY)
                 .baseUrl(server.baseUrl())
+                .defaultModel("jev-latest")
                 .requestTimeout(Duration.ofSeconds(5))
                 .build();
     }
@@ -374,6 +379,99 @@ class TypeSafeClientTest {
     }
 
     @Test
+    void missingModelRejectedClientSide() {
+        TypeSafeClient noDefault = TypeSafeClient.builder()
+                .apiKey(TEST_KEY)
+                .baseUrl(server.baseUrl())
+                .build();
+        SystemOneRequest request = SystemOneRequest.builder()
+                .state("x")
+                .question("q", Question.noul("?"))
+                .build();
+
+        assertThrows(InvalidRequestException.class, () -> noDefault.systemOne(request));
+        assertThrows(InvalidRequestException.class, () -> noDefault.systemOneAsync(request).join());
+        assertEquals(0, server.requests().size());
+    }
+
+    @Test
+    void requestModelOverridesClientDefault() throws Exception {
+        server.enqueue(200, threeAnswerBody());
+
+        client.systemOne(SystemOneRequest.builder()
+                .state("x")
+                .model("jev-preview")
+                .question("q", Question.noul("?"))
+                .build());
+
+        JsonNode body = MAPPER.readTree(server.requests().get(0).body());
+        assertEquals("jev-preview", body.path("model").asText());
+    }
+
+    @Test
+    void blankModelFallsBackToDefault() throws Exception {
+        server.enqueue(200, threeAnswerBody());
+
+        client.systemOne(SystemOneRequest.builder()
+                .state("x")
+                .model(" ")
+                .question("q", Question.noul("?"))
+                .build());
+
+        JsonNode body = MAPPER.readTree(server.requests().get(0).body());
+        assertEquals("jev-latest", body.path("model").asText());
+    }
+
+    @Test
+    void nonTextualScalarStateRejected() {
+        assertThrows(InvalidRequestException.class, () ->
+                SystemOneRequest.builder()
+                        .state(MAPPER.valueToTree(42))
+                        .question("q", Question.noul("?"))
+                        .build());
+        assertThrows(InvalidRequestException.class, () ->
+                SystemOneRequest.builder()
+                        .state(MAPPER.valueToTree(true))
+                        .question("q", Question.noul("?"))
+                        .build());
+        assertThrows(InvalidRequestException.class, () ->
+                SystemOneRequest.builder()
+                        .state(NullNode.getInstance())
+                        .question("q", Question.noul("?"))
+                        .build());
+    }
+
+    @Test
+    void blankInstructionsRejected() {
+        assertThrows(InvalidRequestException.class, () -> Question.noul("   "));
+        assertThrows(InvalidRequestException.class, () -> Question.noul(null));
+    }
+
+    @Test
+    void modelsEndpointParsesList() {
+        server.enqueue(200, """
+                {"models":[
+                  {"name":"jev-latest","description":"latest","release_date":"2026-09-10T18:38:01.391457+00:00"},
+                  {"name":"jev-preview","description":"preview"}
+                ]}
+                """);
+
+        List<ModelInfo> models = client.models();
+
+        assertEquals(2, models.size());
+        assertEquals("jev-latest", models.get(0).name());
+        assertEquals("latest", models.get(0).description());
+        assertEquals(2026, models.get(0).releaseDate().getYear());
+        assertNull(models.get(1).releaseDate());
+        assertEquals("GET", server.requests().get(0).method());
+        assertEquals("/v1/models", server.requests().get(0).path());
+        assertEquals("Bearer " + TEST_KEY, server.requests().get(0).header("Authorization"));
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable(
+            named = "TYPESAFE_API_KEY", matches = ".+",
+            disabledReason = "env fallback supplies a key when TYPESAFE_API_KEY is set")
     void builderRequiresApiKey() {
         assertThrows(IllegalArgumentException.class, () ->
                 TypeSafeClient.builder().baseUrl(server.baseUrl()).build());

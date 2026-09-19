@@ -39,7 +39,7 @@ final class StubServer implements AutoCloseable {
 
     StubServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/v1/systemone", this::handle);
+        server.createContext("/", this::handle);
         server.start();
     }
 

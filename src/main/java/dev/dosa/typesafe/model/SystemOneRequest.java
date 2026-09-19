@@ -57,7 +57,7 @@ public final class SystemOneRequest {
 
     /**
      * Returns the requested model, or {@code null} when unset (in which case the
-     * client's default model - or ultimately the server's - is used).
+     * client's default model is used; a model is required overall).
      *
      * @return the model name, or {@code null}
      */
@@ -79,8 +79,8 @@ public final class SystemOneRequest {
      * {@code {"state": ..., "model": ..., "questions": {...}}}.
      *
      * <p>Note: when {@link #model()} is {@code null} the {@code model} field is
-     * emitted as an empty string; {@code TypeSafeClient} overlays its configured
-     * default model at send time.</p>
+     * emitted as an empty string; {@code TypeSafeClient} always overlays the
+     * resolved model at send time.</p>
      *
      * @return the request body as a JSON object
      */

@@ -33,8 +33,8 @@ public abstract sealed class Question permits NoulQuestion, ChoiceQuestion, Scor
     private final String instructions;
 
     Question(String instructions) {
-        if (instructions == null) {
-            throw new InvalidRequestException("Question instructions must not be null");
+        if (instructions == null || instructions.isBlank()) {
+            throw new InvalidRequestException("Question instructions must not be null or blank");
         }
         this.instructions = instructions;
     }

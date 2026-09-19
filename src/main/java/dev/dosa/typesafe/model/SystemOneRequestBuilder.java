@@ -58,8 +58,9 @@ public final class SystemOneRequestBuilder {
     }
 
     /**
-     * Sets the model to use. An empty string (or leaving this unset) lets the
-     * client default - or ultimately the server - pick the model.
+     * Sets the model to use, e.g. {@code "jev-latest"}. When unset or blank,
+     * the client's default model applies; if neither is configured the client
+     * rejects the request before sending (the API requires a model).
      *
      * @param model the model name, e.g. {@code "jev-latest"}
      * @return this builder
@@ -101,8 +102,12 @@ public final class SystemOneRequestBuilder {
      *         client-side before any network call
      */
     public SystemOneRequest build() {
-        if (state == null) {
+        if (state == null || state.isNull()) {
             throw new InvalidRequestException("SystemOneRequest requires a state");
+        }
+        if (!state.isTextual() && !state.isObject() && !state.isArray()) {
+            throw new InvalidRequestException(
+                    "state must be a JSON string, object, or array, not " + state.getNodeType());
         }
         if (questions.isEmpty()) {
             throw new InvalidRequestException("SystemOneRequest requires at least one question");

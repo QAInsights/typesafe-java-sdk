@@ -25,7 +25,7 @@ import dev.dosa.typesafe.model.*;
 
 TypeSafeClient client = TypeSafeClient.builder()
         .apiKey(System.getenv("TYPESAFE_API_KEY"))
-        .defaultModel("jev-latest")        // optional
+        .defaultModel("jev-latest")        // used when a request sets no model
         .requestTimeout(Duration.ofSeconds(10))
         .build();
 
@@ -73,7 +73,17 @@ Question.score("How frustrated?")
 Validation runs client-side in `SystemOneRequest.builder().build()`, before any
 network call, and throws `InvalidRequestException`: empty questions map, blank
 question names, choice questions with fewer than 2 or more than 255 options,
-score questions with fewer than 2 levels.
+score questions with fewer than 2 levels, blank instructions, and a `state`
+that is not a JSON string, object, or array.
+
+A **model is required** by the API: set it per-request via `.model("jev-latest")`
+or once on the client via `.defaultModel(...)`. If neither is set, the client
+throws `InvalidRequestException` before sending. Discover valid names with:
+
+```java
+List<ModelInfo> models = client.models();   // GET /v1/models
+models.forEach(m -> System.out.println(m.name() + " - " + m.description()));
+```
 
 ## Reading answers
 
@@ -118,7 +128,7 @@ in exception messages.
 TypeSafeClient.builder()
         .apiKey(...)                     // or TYPESAFE_API_KEY env var
         .baseUrl(...)                    // or TYPESAFE_BASE_URL env var, then https://api.typesafe.ai
-        .defaultModel(...)               // model used when request has none
+        .defaultModel(...)               // fallback model; one is required somewhere
         .requestTimeout(Duration)        // per attempt, default 30s
         .connectTimeout(Duration)        // default 10s
         .maxAttempts(3)                  // retries incl. initial attempt
@@ -134,3 +144,7 @@ TypeSafeClient.builder()
 mvn test      # compiles and runs the test suite (JDK-local stub HTTP server)
 mvn package   # builds the jar
 ```
+
+With `TYPESAFE_API_KEY` set in the environment, `mvn test` also runs the live
+integration tests in `TypeSafeClientLiveTest` against the real API (they are
+skipped otherwise).

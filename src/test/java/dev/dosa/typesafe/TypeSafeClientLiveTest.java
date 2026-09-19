@@ -1,15 +1,20 @@
 package dev.dosa.typesafe;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.dosa.typesafe.exception.ApiException;
 import dev.dosa.typesafe.exception.AuthenticationException;
+import dev.dosa.typesafe.exception.InvalidRequestException;
+import dev.dosa.typesafe.model.ModelInfo;
 import dev.dosa.typesafe.model.Question;
 import dev.dosa.typesafe.model.SystemOneRequest;
 import dev.dosa.typesafe.model.SystemOneResponse;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
@@ -38,6 +43,7 @@ class TypeSafeClientLiveTest {
         return SystemOneRequest.builder()
                 .state(Map.of("ticket",
                         "Your app charged me twice and support ignored me for a week. Fix this now."))
+                .model("jev-latest")
                 .question("urgent", Question.noul("Does this message convey urgency?")
                         .whenTrue("Demands immediate attention or mentions a deadline")
                         .whenFalse("Casual inquiry with no time pressure"))
@@ -98,5 +104,47 @@ class TypeSafeClientLiveTest {
         AuthenticationException ex = assertThrows(AuthenticationException.class,
                 () -> badClient.systemOne(sampleRequest()));
         assertTrue(ex.status() == 401 || ex.status() == 403);
+    }
+
+    @Test
+    void missingModelRejectedClientSide() {
+        TypeSafeClient noDefault = TypeSafeClient.builder().build();
+        SystemOneRequest request = SystemOneRequest.builder()
+                .state("x")
+                .question("q", Question.noul("Is this urgent?"))
+                .build();
+        assertThrows(InvalidRequestException.class, () -> noDefault.systemOne(request));
+    }
+
+    @Test
+    void unknownModelRejectedByApi() {
+        ApiException ex = assertThrows(ApiException.class, () ->
+                client.systemOne(SystemOneRequest.builder()
+                        .state("x")
+                        .model("gpt-4")
+                        .question("q", Question.noul("Is this urgent?"))
+                        .build()));
+        assertEquals(400, ex.status());
+    }
+
+    @Test
+    void listsAvailableModels() {
+        List<ModelInfo> models = client.models();
+        assertFalse(models.isEmpty());
+        assertTrue(models.stream().anyMatch(m -> "jev-latest".equals(m.name())),
+                "jev-latest not in " + models);
+        models.forEach(m -> assertNotNull(m.name()));
+        System.out.println("models=" + models);
+    }
+
+    @Test
+    void unicodeQuestionNameRoundTrips() {
+        SystemOneResponse resp = client.systemOne(SystemOneRequest.builder()
+                .state("I want a refund, please.")
+                .model("jev-latest")
+                .question("café-日本語", Question.noul("Is this a complaint?"))
+                .build());
+        assertTrue(resp.answer("café-日本語").isPresent(),
+                "unicode question name missing from answers: " + resp.answers().keySet());
     }
 }
